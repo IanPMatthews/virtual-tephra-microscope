@@ -1,0 +1,64 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+#topbar {
+  background: #333;
+  color: white;
+  padding: 10px;
+}
+
+#topbar select,
+#topbar button {
+  margin-left: 10px;
+}
+
+#viewport {
+  width: 100%;
+  height: 700px;
+  overflow: hidden;
+  background: #f0f0f0;
+  border: 2px solid #ccc;
+  position: relative;
+  cursor: grab;
+}
+
+#viewport:active {
+  cursor: grabbing;
+}
+
+#slide {
+  width: 2400px;
+  height: 2400px;
+  position: relative;
+  transform-origin: 0 0;
+}
+
+.object {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  user-select: none;
+}
+
+#scoreboard {
+  padding: 10px;
+  font-size: 18px;
+}
+
+#resultsSection {
+  padding: 20px;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  border: 1px solid #999;
+  padding: 5px 10px;
+  text-align: center;
+}
