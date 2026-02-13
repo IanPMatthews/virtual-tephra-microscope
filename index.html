@@ -1,36 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Virtual Tephra Microscope</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Virtual Tephra Microscope</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
-<div id="topBar">
-  <select id="modeSelect">
-    <option value="single">Single Virtual Slide</option>
-    <option value="strat">Stratigraphic Exercise</option>
+<div id="topbar">
+  <h2>Virtual Tephra Microscope</h2>
+
+  <select id="exerciseSelect">
+    <option value="vedde">Vedde Exercise</option>
+    <option value="laacher">Laacher See Exercise</option>
+    <option value="basalt">Basalt Exercise</option>
+    <option value="hekla">Hekla (Vesicular) Exercise</option>
+    <option value="mixed">Mixed Exercise</option>
+    <option value="strat">Stratigraphic Count Exercise</option>
   </select>
 
-  <select id="slideSelect">
-    <option value="vedde">Vedde</option>
-    <option value="laacher_see">Laacher See</option>
-    <option value="basalts">Basalts</option>
-    <option value="vesicular">Vesicular</option>
-    <option value="diatoms">Diatoms</option>
-  </select>
-
-  <button onclick="startExercise()">Start</button>
+  <button onclick="handleStart()">Start</button>
   <button onclick="resetView()">Reset View</button>
+  <button id="nextSlideBtn" onclick="nextStratSlide()" style="display:none;">
+    Next Slide
+  </button>
 
-  <div id="statusText"></div>
+  <div id="statusArea">
+    <span id="slideIndicator"></span>
+    <span id="score"></span>
+  </div>
 </div>
 
-<div id="viewer">
+<div id="viewport">
   <div id="slide"></div>
 </div>
 
+<div id="resultsSection" style="display:none;">
+  <h3>Stratigraphic Results</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Slide</th>
+        <th>True Count</th>
+        <th>Correct</th>
+        <th>False Positives</th>
+      </tr>
+    </thead>
+    <tbody id="resultsTable"></tbody>
+  </table>
+
+  <canvas id="resultsChart"></canvas>
+</div>
+
 <script src="script.js"></script>
+
+<script>
+function handleStart() {
+  const value = document.getElementById("exerciseSelect").value;
+
+  if (value === "strat") {
+    document.getElementById("nextSlideBtn").style.display = "inline-block";
+    startStratExercise();
+  } else {
+    document.getElementById("nextSlideBtn").style.display = "none";
+    startExercise(value);
+  }
+}
+</script>
+
 </body>
 </html>
