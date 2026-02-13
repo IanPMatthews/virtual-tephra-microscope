@@ -48,7 +48,6 @@ let objects = [];
 let stats = {};
 let stratSlideIndex = 0;
 let stratStats = [];
-
 let currentSlideImages = null;
 
 // ================= UTILITIES =================
@@ -88,8 +87,62 @@ function getGridPosition(index){
 
 function styleShard(img){
   const rotation=Math.random()*360;
-  const scale=0.9+Math.random()*0.2; // +/- 10% as requested
+  const scale=0.9+Math.random()*0.2; // +/- 10%
   img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
+}
+
+// ================= ZOOM & PAN =================
+
+let scale=1;
+let originX=0, originY=0;
+let isDragging=false;
+let hasMoved=false;
+let startX,startY;
+
+viewport.addEventListener("wheel",function(e){
+  e.preventDefault();
+  const rect=viewport.getBoundingClientRect();
+  const mouseX=e.clientX-rect.left;
+  const mouseY=e.clientY-rect.top;
+
+  const zoomIntensity=0.1;
+  const direction=e.deltaY<0?1:-1;
+  const newScale=Math.min(Math.max(0.5,scale+direction*zoomIntensity),4);
+
+  originX-=(mouseX-originX)*(newScale/scale-1);
+  originY-=(mouseY-originY)*(newScale/scale-1);
+
+  scale=newScale;
+  updateTransform();
+});
+
+viewport.addEventListener("mousedown",function(e){
+  isDragging=true;
+  hasMoved=false;
+  startX=e.clientX-originX;
+  startY=e.clientY-originY;
+});
+
+viewport.addEventListener("mousemove",function(e){
+  if(!isDragging) return;
+  hasMoved=true;
+  originX=e.clientX-startX;
+  originY=e.clientY-startY;
+  updateTransform();
+});
+
+viewport.addEventListener("mouseup",()=>isDragging=false);
+viewport.addEventListener("mouseleave",()=>isDragging=false);
+
+function updateTransform(){
+  slide.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
+}
+
+function resetView(){
+  scale=1;
+  originX=0;
+  originY=0;
+  updateTransform();
 }
 
 // ================= CLEAR SLIDE =================
@@ -97,10 +150,8 @@ function styleShard(img){
 function clearSlide() {
   while (slide.firstChild) slide.removeChild(slide.firstChild);
   objects = [];
-  stats = {};
   currentSlideImages = null;
-
-  // reset zoom/pan
+  stats = {correct:0,falsePositive:0,totalTephra:0};
   resetView();
 }
 
@@ -114,11 +165,8 @@ function startExercise(type){
 function generateSlide(type){
   clearSlide();
 
-  stats={correct:0,falsePositive:0,totalTephra:0};
-
-  let objectTypes=[];
   const config=EXERCISES[type];
-
+  let objectTypes=[];
   for(let category in config.composition){
     for(let i=0;i<config.composition[category];i++){
       objectTypes.push(category);
@@ -126,7 +174,6 @@ function generateSlide(type){
   }
 
   shuffleArray(objectTypes);
-
   document.getElementById("slideIndicator").innerText =
     `Total shards: ${objectTypes.length}`;
 
@@ -136,24 +183,21 @@ function generateSlide(type){
     img.className="object";
     img.style.position="absolute";
     img.style.opacity=0;
+
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
 
     styleShard(img);
-    img.loading = "lazy";
+    img.loading="lazy";
 
     const obj={trueType:category,element:img,clicked:false};
-
     img.onload=function(){
       img.style.transition="opacity 0.3s";
       img.style.opacity=1;
       slide.appendChild(img);
     };
-
-    img.onerror=function(){
-      console.warn("Failed to load image:", img.src);
-    };
+    img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
     img.onclick=(e)=>{
       if(hasMoved) return;
@@ -167,7 +211,6 @@ function generateSlide(type){
         stats.falsePositive++;
         img.style.outline="3px solid red";
       }
-
       updateScore();
       checkCompletion();
     };
@@ -207,20 +250,15 @@ function generateStratSlide(){
 
   const trueCount=STRAT_EXERCISE.tephraCounts[stratSlideIndex];
   const total=STRAT_EXERCISE.totalObjectsPerSlide;
-
   stratStats[stratSlideIndex]={trueCount,correct:0,falsePositive:0};
 
   let objectTypes=[];
-
   for(let i=0;i<trueCount;i++){
-    objectTypes.push(["vedde","laacher_see","basalts","vesicular"]
-      [Math.floor(Math.random()*4)]);
+    objectTypes.push(["vedde","laacher_see","basalts","vesicular"][Math.floor(Math.random()*4)]);
   }
-
   for(let i=trueCount;i<total;i++){
     objectTypes.push(Math.random()<0.5?"diatoms":"non_tephra");
   }
-
   shuffleArray(objectTypes);
 
   document.getElementById("slideIndicator").innerText =
@@ -232,6 +270,7 @@ function generateStratSlide(){
     img.className="object";
     img.style.position="absolute";
     img.style.opacity=0;
+
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
@@ -244,10 +283,7 @@ function generateStratSlide(){
       img.style.opacity=1;
       slide.appendChild(img);
     };
-
-    img.onerror=function(){
-      console.warn("Failed to load image:", img.src);
-    };
+    img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
     img.onclick=(e)=>{
       if(hasMoved) return;
