@@ -21,17 +21,19 @@
   </select>
 
   <button onclick="handleStart()">Start</button>
+  <button onclick="resetView()">Reset View</button>
   <button id="nextSlideBtn" onclick="nextStratSlide()" style="display:none;">
     Next Slide
   </button>
+
+  <div id="statusArea">
+    <span id="slideIndicator"></span>
+    <span id="score"></span>
+  </div>
 </div>
 
 <div id="viewport">
   <div id="slide"></div>
-</div>
-
-<div id="scoreboard">
-  <span id="score"></span>
 </div>
 
 <div id="resultsSection" style="display:none;">
