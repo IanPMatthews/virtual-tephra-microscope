@@ -6,12 +6,12 @@ const viewport = document.getElementById("viewport");
 const slideWidth = 2400;
 
 const IMAGE_COUNTS = {
-  vedde: 80,
-  laacher_see: 80,
-  basalts: 80,
-  vesicular: 80,
-  diatoms: 80,
-  non_tephra: 80
+  vedde: 82,
+  laacher_see: 95,
+  basalts: 69,
+  vesicular: 100,
+  diatoms: 100,
+  non_tephra: 100
 };
 
 const folderMap = {
@@ -24,22 +24,22 @@ const folderMap = {
 };
 
 const EXERCISES = {
-  vedde: { composition: { vedde:30, diatoms:25, non_tephra:25 }},
-  laacher: { composition: { laacher_see:30, diatoms:25, non_tephra:25 }},
-  basalt: { composition: { basalts:30, diatoms:25, non_tephra:25 }},
-  hekla: { composition: { vesicular:30, diatoms:25, non_tephra:25 }},
+  vedde: { composition: { vedde:30, diatoms:30, non_tephra:30 }},
+  laacher: { composition: { laacher_see:30, diatoms:30, non_tephra:30 }},
+  basalt: { composition: { basalts:30, diatoms:30, non_tephra:30 }},
+  hekla: { composition: { vesicular:30, diatoms:30, non_tephra:30 }},
   mixed: {
     composition: {
       vedde:10, laacher_see:10,
-      basalts:10, vesicular:10,
-      diatoms:20, non_tephra:20
+      basalts:5, vesicular:10,
+      diatoms:30, non_tephra:30
     }
   }
 };
 
 const STRAT_EXERCISE = {
   tephraCounts: [0,0,2,35,15,11,5,2,3,1,1,0,0,1,0],
-  totalObjectsPerSlide: 80
+  totalObjectsPerSlide: 100
 };
 
 // ================= STATE =================
@@ -86,7 +86,7 @@ function getGridPosition(index){
 
 function styleShard(img){
   const rotation=Math.random()*360;
-  const scale=0.9+Math.random()*0.2;
+  const scale=0.9+Math.random()*0.3;
   img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
 }
 
@@ -322,3 +322,4 @@ function resetView(){
   originY=0;
   updateTransform();
 }
+
