@@ -49,6 +49,8 @@ let stats = {};
 let stratSlideIndex = 0;
 let stratStats = [];
 
+let currentSlideImages = null;
+
 // ================= UTILITIES =================
 
 function shuffleArray(array){
@@ -86,8 +88,20 @@ function getGridPosition(index){
 
 function styleShard(img){
   const rotation=Math.random()*360;
-  const scale=0.9+Math.random()*0.3;
+  const scale=0.9+Math.random()*0.2; // +/- 10% as requested
   img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
+}
+
+// ================= CLEAR SLIDE =================
+
+function clearSlide() {
+  while (slide.firstChild) slide.removeChild(slide.firstChild);
+  objects = [];
+  stats = {};
+  currentSlideImages = null;
+
+  // reset zoom/pan
+  resetView();
 }
 
 // ================= SINGLE SLIDE =================
@@ -98,8 +112,8 @@ function startExercise(type){
 }
 
 function generateSlide(type){
-  slide.innerHTML="";
-  objects=[];
+  clearSlide();
+
   stats={correct:0,falsePositive:0,totalTephra:0};
 
   let objectTypes=[];
@@ -117,17 +131,29 @@ function generateSlide(type){
     `Total shards: ${objectTypes.length}`;
 
   objectTypes.forEach((category,index)=>{
-    const img=document.createElement("img");
+    const img=new Image();
     img.src=getRandomImage(category);
     img.className="object";
-
+    img.style.position="absolute";
+    img.style.opacity=0;
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
 
     styleShard(img);
+    img.loading = "lazy";
 
     const obj={trueType:category,element:img,clicked:false};
+
+    img.onload=function(){
+      img.style.transition="opacity 0.3s";
+      img.style.opacity=1;
+      slide.appendChild(img);
+    };
+
+    img.onerror=function(){
+      console.warn("Failed to load image:", img.src);
+    };
 
     img.onclick=(e)=>{
       if(hasMoved) return;
@@ -147,7 +173,6 @@ function generateSlide(type){
     };
 
     objects.push(obj);
-    slide.appendChild(img);
   });
 
   stats.totalTephra=objects.filter(o=>isTephra(o.trueType)).length;
@@ -178,11 +203,7 @@ function startStratExercise(){
 }
 
 function generateStratSlide(){
-  slide.innerHTML="";
-  objects=[];
-
-  document.getElementById("slideIndicator").innerText =
-    `Slide ${stratSlideIndex+1} of ${STRAT_EXERCISE.tephraCounts.length}`;
+  clearSlide();
 
   const trueCount=STRAT_EXERCISE.tephraCounts[stratSlideIndex];
   const total=STRAT_EXERCISE.totalObjectsPerSlide;
@@ -202,16 +223,31 @@ function generateStratSlide(){
 
   shuffleArray(objectTypes);
 
+  document.getElementById("slideIndicator").innerText =
+    `Slide ${stratSlideIndex+1} of ${STRAT_EXERCISE.tephraCounts.length}`;
+
   objectTypes.forEach((category,index)=>{
-    const img=document.createElement("img");
+    const img=new Image();
     img.src=getRandomImage(category);
     img.className="object";
-
+    img.style.position="absolute";
+    img.style.opacity=0;
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
 
     styleShard(img);
+    img.loading="lazy";
+
+    img.onload=function(){
+      img.style.transition="opacity 0.3s";
+      img.style.opacity=1;
+      slide.appendChild(img);
+    };
+
+    img.onerror=function(){
+      console.warn("Failed to load image:", img.src);
+    };
 
     img.onclick=(e)=>{
       if(hasMoved) return;
@@ -226,8 +262,6 @@ function generateStratSlide(){
         img.style.outline="3px solid red";
       }
     };
-
-    slide.appendChild(img);
   });
 }
 
@@ -239,87 +273,3 @@ function nextStratSlide(){
     showResults();
   }
 }
-
-function showResults(){
-  document.getElementById("resultsSection").style.display="block";
-
-  const tbody=document.getElementById("resultsTable");
-  tbody.innerHTML="";
-
-  stratStats.forEach((s,i)=>{
-    const row=document.createElement("tr");
-    row.innerHTML=`<td>${i+1}</td>
-                   <td>${s.trueCount}</td>
-                   <td>${s.correct}</td>
-                   <td>${s.falsePositive}</td>`;
-    tbody.appendChild(row);
-  });
-
-  new Chart(document.getElementById("resultsChart"),{
-    type:"bar",
-    data:{
-      labels:stratStats.map((_,i)=>`Slide ${i+1}`),
-      datasets:[
-        {label:"True Count",data:stratStats.map(s=>s.trueCount)},
-        {label:"Student Count",data:stratStats.map(s=>s.correct)}
-      ]
-    },
-    options:{responsive:true,scales:{y:{beginAtZero:true}}}
-  });
-}
-
-// ================= ZOOM & PAN =================
-
-let scale=1;
-let originX=0, originY=0;
-let isDragging=false;
-let hasMoved=false;
-let startX,startY;
-
-viewport.addEventListener("wheel",function(e){
-  e.preventDefault();
-
-  const rect=viewport.getBoundingClientRect();
-  const mouseX=e.clientX-rect.left;
-  const mouseY=e.clientY-rect.top;
-
-  const zoomIntensity=0.1;
-  const direction=e.deltaY<0?1:-1;
-  const newScale=Math.min(Math.max(0.5,scale+direction*zoomIntensity),4);
-
-  originX-=(mouseX-originX)*(newScale/scale-1);
-  originY-=(mouseY-originY)*(newScale/scale-1);
-
-  scale=newScale;
-  updateTransform();
-});
-
-viewport.addEventListener("mousedown",function(e){
-  isDragging=true;
-  hasMoved=false;
-  startX=e.clientX-originX;
-  startY=e.clientY-originY;
-});
-
-viewport.addEventListener("mousemove",function(e){
-  if(!isDragging) return;
-  hasMoved=true;
-  originX=e.clientX-startX;
-  originY=e.clientY-startY;
-  updateTransform();
-});
-
-viewport.addEventListener("mouseup",()=>isDragging=false);
-viewport.addEventListener("mouseleave",()=>isDragging=false);
-
-function updateTransform(){
-  slide.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
-}
-
-function resetView(){
-  scale=1;
-  originX=0;
-  originY=0;
-  updateTransform();
-}
-
