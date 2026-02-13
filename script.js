@@ -87,7 +87,7 @@ function getGridPosition(index){
 
 function styleShard(img){
   const rotation=Math.random()*360;
-  const scale=0.9+Math.random()*0.2; // +/- 10%
+  const scale=0.9+Math.random()*0.2;
   img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
 }
 
@@ -189,13 +189,16 @@ function generateSlide(type){
     img.style.top=pos.y+"px";
 
     styleShard(img);
-    img.loading="lazy";
+    img.loading = "lazy";
+
+    // append immediately so image always exists in DOM
+    slide.appendChild(img);
 
     const obj={trueType:category,element:img,clicked:false};
+
     img.onload=function(){
       img.style.transition="opacity 0.3s";
       img.style.opacity=1;
-      slide.appendChild(img);
     };
     img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
@@ -278,10 +281,11 @@ function generateStratSlide(){
     styleShard(img);
     img.loading="lazy";
 
+    slide.appendChild(img);
+
     img.onload=function(){
       img.style.transition="opacity 0.3s";
       img.style.opacity=1;
-      slide.appendChild(img);
     };
     img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
