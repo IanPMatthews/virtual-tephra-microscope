@@ -1,324 +1,180 @@
-// ================= CONFIG =================
-
 const slide = document.getElementById("slide");
-const viewport = document.getElementById("viewport");
+const viewer = document.getElementById("viewer");
+const statusText = document.getElementById("statusText");
 
-const slideWidth = 2400;
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
 
-const IMAGE_COUNTS = {
-  vedde: 80,
-  laacher_see: 80,
-  basalts: 80,
-  vesicular: 80,
-  diatoms: 80,
-  non_tephra: 80
+let isDragging = false;
+let hasDragged = false;
+let startX, startY;
+const dragThreshold = 5;
+
+let exerciseMode = "single";
+let totalShards = 0;
+let foundShards = 0;
+
+let stratSlides = ["vedde", "laacher_see", "basalts", "vesicular", "diatoms"];
+let currentStratIndex = 0;
+
+/* ------------------ IMAGE FILE MAP ------------------ */
+/* You can extend numbers as needed */
+
+const slideImages = {
+  vedde: generateImageList(82),
+  laacher_see: generateImageList(95),
+  basalts: generateImageList(69),
+  vesicular: generateImageList(100),
+  diatoms: generateImageList(100)
 };
 
-const folderMap = {
-  vedde: "vedde",
-  laacher_see: "laacher_see",
-  basalts: "basalts",
-  vesicular: "vesicular",
-  diatoms: "diatoms",
-  non_tephra: "non_tephra"
-};
-
-const EXERCISES = {
-  vedde: { composition: { vedde:30, diatoms:25, non_tephra:25 }},
-  laacher: { composition: { laacher_see:30, diatoms:25, non_tephra:25 }},
-  basalt: { composition: { basalts:30, diatoms:25, non_tephra:25 }},
-  hekla: { composition: { vesicular:30, diatoms:25, non_tephra:25 }},
-  mixed: {
-    composition: {
-      vedde:10, laacher_see:10,
-      basalts:10, vesicular:10,
-      diatoms:20, non_tephra:20
-    }
+function generateImageList(n) {
+  let arr = [];
+  for (let i = 1; i <= n; i++) {
+    arr.push(i + ".jpg");
   }
-};
-
-const STRAT_EXERCISE = {
-  tephraCounts: [0,0,2,35,15,11,5,2,3,1,1,0,0,1,0],
-  totalObjectsPerSlide: 80
-};
-
-// ================= STATE =================
-
-let objects = [];
-let stats = {};
-let stratSlideIndex = 0;
-let stratStats = [];
-
-// ================= UTILITIES =================
-
-function shuffleArray(array){
-  for(let i=array.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [array[i],array[j]]=[array[j],array[i]];
-  }
-  return array;
+  return arr;
 }
 
-function getRandomImage(category){
-  const count=IMAGE_COUNTS[category];
-  const index=Math.floor(Math.random()*count)+1;
-  const padded=String(index).padStart(3,"0");
-  return `images/${folderMap[category]}/${padded}.jpg`;
-}
+/* ------------------ START EXERCISE ------------------ */
 
-function isTephra(type){
-  return ["vedde","laacher_see","basalts","vesicular"].includes(type);
-}
+function startExercise() {
+  exerciseMode = document.getElementById("modeSelect").value;
 
-function getGridPosition(index){
-  const cellSize=180;
-  const objectSize=140;
-  const columns=Math.floor(slideWidth/cellSize);
+  resetView();
 
-  const row=Math.floor(index/columns);
-  const col=index%columns;
-
-  const jitterX=Math.random()*(cellSize-objectSize);
-  const jitterY=Math.random()*(cellSize-objectSize);
-
-  return { x:col*cellSize+jitterX, y:row*cellSize+jitterY };
-}
-
-function styleShard(img){
-  const rotation=Math.random()*360;
-  const scale=0.9+Math.random()*0.2;
-  img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
-}
-
-// ================= SINGLE SLIDE =================
-
-function startExercise(type){
-  document.getElementById("resultsSection").style.display="none";
-  generateSlide(type);
-}
-
-function generateSlide(type){
-  slide.innerHTML="";
-  objects=[];
-  stats={correct:0,falsePositive:0,totalTephra:0};
-
-  let objectTypes=[];
-  const config=EXERCISES[type];
-
-  for(let category in config.composition){
-    for(let i=0;i<config.composition[category];i++){
-      objectTypes.push(category);
-    }
-  }
-
-  shuffleArray(objectTypes);
-
-  document.getElementById("slideIndicator").innerText =
-    `Total shards: ${objectTypes.length}`;
-
-  objectTypes.forEach((category,index)=>{
-    const img=document.createElement("img");
-    img.src=getRandomImage(category);
-    img.className="object";
-
-    const pos=getGridPosition(index);
-    img.style.left=pos.x+"px";
-    img.style.top=pos.y+"px";
-
-    styleShard(img);
-
-    const obj={trueType:category,element:img,clicked:false};
-
-    img.onclick=(e)=>{
-      if(hasMoved) return;
-      if(obj.clicked) return;
-      obj.clicked=true;
-
-      if(isTephra(obj.trueType)){
-        stats.correct++;
-        img.style.outline="3px solid green";
-      } else {
-        stats.falsePositive++;
-        img.style.outline="3px solid red";
-      }
-
-      updateScore();
-      checkCompletion();
-    };
-
-    objects.push(obj);
-    slide.appendChild(img);
-  });
-
-  stats.totalTephra=objects.filter(o=>isTephra(o.trueType)).length;
-  updateScore();
-}
-
-function updateScore(){
-  document.getElementById("score").innerText =
-    `Correct: ${stats.correct} | False positives: ${stats.falsePositive}`;
-}
-
-function checkCompletion(){
-  const clicked=objects.filter(o=>o.clicked).length;
-  if(clicked===objects.length){
-    const accuracy=Math.round((stats.correct/stats.totalTephra)*100);
-    document.getElementById("slideIndicator").innerText =
-      `Exercise Complete — Accuracy: ${accuracy}%`;
-  }
-}
-
-// ================= STRAT =================
-
-function startStratExercise(){
-  stratSlideIndex=0;
-  stratStats=[];
-  document.getElementById("resultsSection").style.display="none";
-  generateStratSlide();
-}
-
-function generateStratSlide(){
-  slide.innerHTML="";
-  objects=[];
-
-  document.getElementById("slideIndicator").innerText =
-    `Slide ${stratSlideIndex+1} of ${STRAT_EXERCISE.tephraCounts.length}`;
-
-  const trueCount=STRAT_EXERCISE.tephraCounts[stratSlideIndex];
-  const total=STRAT_EXERCISE.totalObjectsPerSlide;
-
-  stratStats[stratSlideIndex]={trueCount,correct:0,falsePositive:0};
-
-  let objectTypes=[];
-
-  for(let i=0;i<trueCount;i++){
-    objectTypes.push(["vedde","laacher_see","basalts","vesicular"]
-      [Math.floor(Math.random()*4)]);
-  }
-
-  for(let i=trueCount;i<total;i++){
-    objectTypes.push(Math.random()<0.5?"diatoms":"non_tephra");
-  }
-
-  shuffleArray(objectTypes);
-
-  objectTypes.forEach((category,index)=>{
-    const img=document.createElement("img");
-    img.src=getRandomImage(category);
-    img.className="object";
-
-    const pos=getGridPosition(index);
-    img.style.left=pos.x+"px";
-    img.style.top=pos.y+"px";
-
-    styleShard(img);
-
-    img.onclick=(e)=>{
-      if(hasMoved) return;
-      if(img.dataset.clicked) return;
-      img.dataset.clicked=true;
-
-      if(isTephra(category)){
-        stratStats[stratSlideIndex].correct++;
-        img.style.outline="3px solid green";
-      } else {
-        stratStats[stratSlideIndex].falsePositive++;
-        img.style.outline="3px solid red";
-      }
-    };
-
-    slide.appendChild(img);
-  });
-}
-
-function nextStratSlide(){
-  if(stratSlideIndex<STRAT_EXERCISE.tephraCounts.length-1){
-    stratSlideIndex++;
-    generateStratSlide();
+  if (exerciseMode === "single") {
+    const folder = document.getElementById("slideSelect").value;
+    loadSlide(folder);
   } else {
-    showResults();
+    currentStratIndex = 0;
+    loadSlide(stratSlides[currentStratIndex]);
   }
 }
 
-function showResults(){
-  document.getElementById("resultsSection").style.display="block";
+/* ------------------ LOAD SLIDE ------------------ */
 
-  const tbody=document.getElementById("resultsTable");
-  tbody.innerHTML="";
+function loadSlide(folder) {
+  slide.innerHTML = "";
+  foundShards = 0;
 
-  stratStats.forEach((s,i)=>{
-    const row=document.createElement("tr");
-    row.innerHTML=`<td>${i+1}</td>
-                   <td>${s.trueCount}</td>
-                   <td>${s.correct}</td>
-                   <td>${s.falsePositive}</td>`;
-    tbody.appendChild(row);
+  const images = slideImages[folder];
+  totalShards = images.length;
+
+  images.forEach(file => {
+    const img = document.createElement("img");
+    img.src = `images/${folder}/${file}`;
+    img.className = "shard";
+
+    img.style.left = Math.random() * 2000 + "px";
+    img.style.top = Math.random() * 1200 + "px";
+    img.style.width = 80 + "px";
+
+    img.addEventListener("click", handleShardClick);
+
+    slide.appendChild(img);
   });
 
-  new Chart(document.getElementById("resultsChart"),{
-    type:"bar",
-    data:{
-      labels:stratStats.map((_,i)=>`Slide ${i+1}`),
-      datasets:[
-        {label:"True Count",data:stratStats.map(s=>s.trueCount)},
-        {label:"Student Count",data:stratStats.map(s=>s.correct)}
-      ]
-    },
-    options:{responsive:true,scales:{y:{beginAtZero:true}}}
-  });
+  if (exerciseMode === "single") {
+    statusText.textContent = `Found 0 of ${totalShards} shards`;
+  } else {
+    statusText.textContent =
+      `Slide ${currentStratIndex + 1} of ${stratSlides.length}`;
+  }
 }
 
-// ================= ZOOM & PAN =================
+/* ------------------ CLICK HANDLER ------------------ */
 
-let scale=1;
-let originX=0, originY=0;
-let isDragging=false;
-let hasMoved=false;
-let startX,startY;
+function handleShardClick(e) {
+  if (hasDragged) return;
 
-viewport.addEventListener("wheel",function(e){
+  if (!this.classList.contains("found")) {
+    this.classList.add("found");
+    foundShards++;
+
+    if (exerciseMode === "single") {
+      if (foundShards === totalShards) {
+        statusText.textContent = "🎉 Slide Complete!";
+      } else {
+        statusText.textContent =
+          `Found ${foundShards} of ${totalShards} shards`;
+      }
+    }
+  }
+}
+
+/* ------------------ ZOOM ------------------ */
+
+viewer.addEventListener("wheel", function (e) {
   e.preventDefault();
 
-  const rect=viewport.getBoundingClientRect();
-  const mouseX=e.clientX-rect.left;
-  const mouseY=e.clientY-rect.top;
+  const rect = viewer.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
 
-  const zoomIntensity=0.1;
-  const direction=e.deltaY<0?1:-1;
-  const newScale=Math.min(Math.max(0.5,scale+direction*zoomIntensity),4);
+  const zoomAmount = 0.1;
+  const direction = e.deltaY > 0 ? -1 : 1;
+  const newScale = scale + direction * zoomAmount;
 
-  originX-=(mouseX-originX)*(newScale/scale-1);
-  originY-=(mouseY-originY)*(newScale/scale-1);
+  if (newScale < 0.5 || newScale > 4) return;
 
-  scale=newScale;
+  const scaleRatio = newScale / scale;
+
+  offsetX = mouseX - (mouseX - offsetX) * scaleRatio;
+  offsetY = mouseY - (mouseY - offsetY) * scaleRatio;
+
+  scale = newScale;
+
   updateTransform();
 });
 
-viewport.addEventListener("mousedown",function(e){
-  isDragging=true;
-  hasMoved=false;
-  startX=e.clientX-originX;
-  startY=e.clientY-originY;
+/* ------------------ PAN ------------------ */
+
+viewer.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  hasDragged = false;
+  startX = e.clientX;
+  startY = e.clientY;
+  viewer.style.cursor = "grabbing";
 });
 
-viewport.addEventListener("mousemove",function(e){
-  if(!isDragging) return;
-  hasMoved=true;
-  originX=e.clientX-startX;
-  originY=e.clientY-startY;
+window.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+
+  if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+    hasDragged = true;
+  }
+
+  offsetX += dx;
+  offsetY += dy;
+
+  startX = e.clientX;
+  startY = e.clientY;
+
   updateTransform();
 });
 
-viewport.addEventListener("mouseup",()=>isDragging=false);
-viewport.addEventListener("mouseleave",()=>isDragging=false);
+window.addEventListener("mouseup", () => {
+  isDragging = false;
+  viewer.style.cursor = "grab";
+});
 
-function updateTransform(){
-  slide.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
+/* ------------------ UPDATE TRANSFORM ------------------ */
+
+function updateTransform() {
+  slide.style.transform =
+    `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
 
-function resetView(){
-  scale=1;
-  originX=0;
-  originY=0;
+/* ------------------ RESET VIEW ------------------ */
+
+function resetView() {
+  scale = 1;
+  offsetX = 0;
+  offsetY = 0;
   updateTransform();
 }
