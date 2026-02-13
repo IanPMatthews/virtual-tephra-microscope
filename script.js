@@ -4,7 +4,6 @@ const slide = document.getElementById("slide");
 const viewport = document.getElementById("viewport");
 
 const slideWidth = 2400;
-const slideHeight = 2400;
 
 const IMAGE_COUNTS = {
   vedde: 80,
@@ -114,6 +113,9 @@ function generateSlide(type){
 
   shuffleArray(objectTypes);
 
+  document.getElementById("slideIndicator").innerText =
+    `Total shards: ${objectTypes.length}`;
+
   objectTypes.forEach((category,index)=>{
     const img=document.createElement("img");
     img.src=getRandomImage(category);
@@ -127,7 +129,8 @@ function generateSlide(type){
 
     const obj={trueType:category,element:img,clicked:false};
 
-    img.onclick=()=>{
+    img.onclick=(e)=>{
+      if(hasMoved) return;
       if(obj.clicked) return;
       obj.clicked=true;
 
@@ -140,6 +143,7 @@ function generateSlide(type){
       }
 
       updateScore();
+      checkCompletion();
     };
 
     objects.push(obj);
@@ -151,8 +155,17 @@ function generateSlide(type){
 }
 
 function updateScore(){
-  document.getElementById("score").innerText=
+  document.getElementById("score").innerText =
     `Correct: ${stats.correct} | False positives: ${stats.falsePositive}`;
+}
+
+function checkCompletion(){
+  const clicked=objects.filter(o=>o.clicked).length;
+  if(clicked===objects.length){
+    const accuracy=Math.round((stats.correct/stats.totalTephra)*100);
+    document.getElementById("slideIndicator").innerText =
+      `Exercise Complete — Accuracy: ${accuracy}%`;
+  }
 }
 
 // ================= STRAT =================
@@ -167,6 +180,9 @@ function startStratExercise(){
 function generateStratSlide(){
   slide.innerHTML="";
   objects=[];
+
+  document.getElementById("slideIndicator").innerText =
+    `Slide ${stratSlideIndex+1} of ${STRAT_EXERCISE.tephraCounts.length}`;
 
   const trueCount=STRAT_EXERCISE.tephraCounts[stratSlideIndex];
   const total=STRAT_EXERCISE.totalObjectsPerSlide;
@@ -197,7 +213,8 @@ function generateStratSlide(){
 
     styleShard(img);
 
-    img.onclick=()=>{
+    img.onclick=(e)=>{
+      if(hasMoved) return;
       if(img.dataset.clicked) return;
       img.dataset.clicked=true;
 
@@ -238,9 +255,7 @@ function showResults(){
     tbody.appendChild(row);
   });
 
-  const ctx=document.getElementById("resultsChart").getContext("2d");
-
-  new Chart(ctx,{
+  new Chart(document.getElementById("resultsChart"),{
     type:"bar",
     data:{
       labels:stratStats.map((_,i)=>`Slide ${i+1}`),
@@ -257,23 +272,38 @@ function showResults(){
 
 let scale=1;
 let originX=0, originY=0;
-let isDragging=false,startX,startY;
+let isDragging=false;
+let hasMoved=false;
+let startX,startY;
 
-viewport.addEventListener("wheel",e=>{
+viewport.addEventListener("wheel",function(e){
   e.preventDefault();
-  scale+=e.deltaY<0?0.1:-0.1;
-  scale=Math.min(Math.max(0.5,scale),4);
+
+  const rect=viewport.getBoundingClientRect();
+  const mouseX=e.clientX-rect.left;
+  const mouseY=e.clientY-rect.top;
+
+  const zoomIntensity=0.1;
+  const direction=e.deltaY<0?1:-1;
+  const newScale=Math.min(Math.max(0.5,scale+direction*zoomIntensity),4);
+
+  originX-=(mouseX-originX)*(newScale/scale-1);
+  originY-=(mouseY-originY)*(newScale/scale-1);
+
+  scale=newScale;
   updateTransform();
 });
 
-viewport.addEventListener("mousedown",e=>{
+viewport.addEventListener("mousedown",function(e){
   isDragging=true;
+  hasMoved=false;
   startX=e.clientX-originX;
   startY=e.clientY-originY;
 });
 
-viewport.addEventListener("mousemove",e=>{
+viewport.addEventListener("mousemove",function(e){
   if(!isDragging) return;
+  hasMoved=true;
   originX=e.clientX-startX;
   originY=e.clientY-startY;
   updateTransform();
@@ -284,4 +314,11 @@ viewport.addEventListener("mouseleave",()=>isDragging=false);
 
 function updateTransform(){
   slide.style.transform=`translate(${originX}px,${originY}px) scale(${scale})`;
+}
+
+function resetView(){
+  scale=1;
+  originX=0;
+  originY=0;
+  updateTransform();
 }
