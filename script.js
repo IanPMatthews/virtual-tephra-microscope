@@ -336,7 +336,7 @@ function nextStratSlide(){
 function showResults(){
   document.getElementById("resultsSection").style.display="block";
 
-  const tableBody=document.getElementById("resultsTableBody");
+const tableBody=document.getElementById("resultsTable");
   tableBody.innerHTML="";
 
   stratStats.forEach((slide,index)=>{
@@ -367,3 +367,4 @@ function showResults(){
     }
   });
 }
+
