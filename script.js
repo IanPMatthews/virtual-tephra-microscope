@@ -48,7 +48,7 @@ let objects = [];
 let stats = {};
 let stratSlideIndex = 0;
 let stratStats = [];
-let currentSlideImages = null;
+let chartInstance = null;
 
 // ================= UTILITIES =================
 
@@ -91,7 +91,7 @@ function styleShard(img){
   img.style.transform=`rotate(${rotation}deg) scale(${scale})`;
 }
 
-// ================= ZOOM & PAN =================
+// ================= ZOOM & PAN (FIXED) =================
 
 let scale=1;
 let originX=0, originY=0;
@@ -125,17 +125,16 @@ viewport.addEventListener("mousedown",function(e){
 
 viewport.addEventListener("mousemove",function(e){
   if(!isDragging) return;
-  
-  const dx = e.clientX - startX;
-  const dy = e.clientY - startY;
 
-  // movement threshold
-  if (Math.abs(newX - originX) > 5 || Math.abs(newY - originY) > 5) {
-    hasMoved = true;
+  const newX=e.clientX-startX;
+  const newY=e.clientY-startY;
+
+  if (Math.abs(newX-originX)>5 || Math.abs(newY-originY)>5){
+    hasMoved=true;
   }
 
-  originX = newX;
-  originY = newY;
+  originX=newX;
+  originY=newY;
 
   updateTransform();
 });
@@ -160,7 +159,7 @@ function clearSlide() {
   while (slide.firstChild) {
     const img = slide.firstChild;
     if (img.tagName === "IMG") {
-      img.src = "";      // force release of image resource
+      img.src = "";
       img.onload = null;
       img.onerror = null;
     }
@@ -168,12 +167,9 @@ function clearSlide() {
   }
 
   objects = [];
-  currentSlideImages = null;
   stats = {correct:0,falsePositive:0,totalTephra:0};
-
   resetView();
 }
-
 
 // ================= SINGLE SLIDE =================
 
@@ -187,6 +183,7 @@ function generateSlide(type){
 
   const config=EXERCISES[type];
   let objectTypes=[];
+
   for(let category in config.composition){
     for(let i=0;i<config.composition[category];i++){
       objectTypes.push(category);
@@ -201,15 +198,13 @@ function generateSlide(type){
     img.className="object";
     img.style.position="absolute";
     img.style.opacity=0;
+    img.loading="eager";
 
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
 
     styleShard(img);
-    img.loading = "eager";
-
-    // append immediately so image always exists in DOM
     slide.appendChild(img);
 
     const obj={trueType:category,element:img,clicked:false};
@@ -218,7 +213,6 @@ function generateSlide(type){
       img.style.transition="opacity 0.3s";
       img.style.opacity=1;
     };
-    img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
     img.onclick=(e)=>{
       if(hasMoved) return;
@@ -232,6 +226,7 @@ function generateSlide(type){
         stats.falsePositive++;
         img.style.outline="3px solid red";
       }
+
       updateScore();
       checkCompletion();
     };
@@ -240,8 +235,10 @@ function generateSlide(type){
   });
 
   stats.totalTephra=objects.filter(o=>isTephra(o.trueType)).length;
+
   document.getElementById("slideIndicator").innerText =
-  `True tephra shards: ${stats.totalTephra}`;
+    `True tephra shards: ${stats.totalTephra}`;
+
   updateScore();
 }
 
@@ -273,15 +270,19 @@ function generateStratSlide(){
 
   const trueCount=STRAT_EXERCISE.tephraCounts[stratSlideIndex];
   const total=STRAT_EXERCISE.totalObjectsPerSlide;
+
   stratStats[stratSlideIndex]={trueCount,correct:0,falsePositive:0};
 
   let objectTypes=[];
+
   for(let i=0;i<trueCount;i++){
     objectTypes.push(["vedde","laacher_see","basalts","vesicular"][Math.floor(Math.random()*4)]);
   }
+
   for(let i=trueCount;i<total;i++){
     objectTypes.push(Math.random()<0.5?"diatoms":"non_tephra");
   }
+
   shuffleArray(objectTypes);
 
   document.getElementById("slideIndicator").innerText =
@@ -293,23 +294,21 @@ function generateStratSlide(){
     img.className="object";
     img.style.position="absolute";
     img.style.opacity=0;
+    img.loading="eager";
 
     const pos=getGridPosition(index);
     img.style.left=pos.x+"px";
     img.style.top=pos.y+"px";
 
     styleShard(img);
-    img.loading="lazy";
-
     slide.appendChild(img);
 
     img.onload=function(){
       img.style.transition="opacity 0.3s";
       img.style.opacity=1;
     };
-    img.onerror=function(){ console.warn("Failed to load image:", img.src); };
 
-    img.onclick=(e)=>{
+    img.onclick=()=>{
       if(hasMoved) return;
       if(img.dataset.clicked) return;
       img.dataset.clicked=true;
@@ -342,34 +341,29 @@ function showResults(){
 
   stratStats.forEach((slide,index)=>{
     const row=document.createElement("tr");
-
     row.innerHTML=`
       <td>${index+1}</td>
       <td>${slide.trueCount}</td>
       <td>${slide.correct}</td>
       <td>${slide.falsePositive}</td>
     `;
-
     tableBody.appendChild(row);
   });
 
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
   const ctx=document.getElementById("resultsChart").getContext("2d");
 
-  new Chart(ctx,{
+  chartInstance = new Chart(ctx,{
     type:"bar",
     data:{
       labels:stratStats.map((_,i)=>`Slide ${i+1}`),
       datasets:[
-        {
-          label:"True Tephra",
-          data:stratStats.map(s=>s.trueCount)
-        },
-        {
-          label:"Correct Identified",
-          data:stratStats.map(s=>s.correct)
-        }
+        { label:"True Tephra", data:stratStats.map(s=>s.trueCount) },
+        { label:"Correct Identified", data:stratStats.map(s=>s.correct) }
       ]
     }
   });
 }
-
