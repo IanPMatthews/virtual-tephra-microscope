@@ -125,9 +125,20 @@ viewport.addEventListener("mousedown",function(e){
 
 viewport.addEventListener("mousemove",function(e){
   if(!isDragging) return;
-  hasMoved=true;
-  originX=e.clientX-startX;
-  originY=e.clientY-startY;
+  
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+
+  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+    hasMoved = true;
+  }
+
+  originX += dx;
+  originY += dy;
+
+  startX = e.clientX;
+  startY = e.clientY;
+
   updateTransform();
 });
 
@@ -148,12 +159,23 @@ function resetView(){
 // ================= CLEAR SLIDE =================
 
 function clearSlide() {
-  while (slide.firstChild) slide.removeChild(slide.firstChild);
+  while (slide.firstChild) {
+    const img = slide.firstChild;
+    if (img.tagName === "IMG") {
+      img.src = "";      // force release of image resource
+      img.onload = null;
+      img.onerror = null;
+    }
+    slide.removeChild(img);
+  }
+
   objects = [];
   currentSlideImages = null;
   stats = {correct:0,falsePositive:0,totalTephra:0};
+
   resetView();
 }
+
 
 // ================= SINGLE SLIDE =================
 
@@ -189,7 +211,7 @@ function generateSlide(type){
     img.style.top=pos.y+"px";
 
     styleShard(img);
-    img.loading = "lazy";
+    img.loading = "eager";
 
     // append immediately so image always exists in DOM
     slide.appendChild(img);
@@ -313,3 +335,4 @@ function nextStratSlide(){
     showResults();
   }
 }
+
