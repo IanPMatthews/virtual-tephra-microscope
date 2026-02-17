@@ -170,6 +170,27 @@ function clearSlide() {
   stats = {correct:0,falsePositive:0,totalTephra:0};
   resetView();
 }
+// ================ BATCH LOAD IMAGES =================
+function loadImagesInBatches(objectTypes, callback) {
+  const batchSize = 10;
+  let index = 0;
+
+  function loadBatch() {
+    const end = Math.min(index + batchSize, objectTypes.length);
+
+    for (let i = index; i < end; i++) {
+      callback(objectTypes[i], i);
+    }
+
+    index = end;
+
+    if (index < objectTypes.length) {
+      requestAnimationFrame(loadBatch);
+    }
+  }
+
+  loadBatch();
+}
 
 // ================= SINGLE SLIDE =================
 
@@ -192,7 +213,7 @@ function generateSlide(type){
 
   shuffleArray(objectTypes);
 
-  objectTypes.forEach((category,index)=>{
+ loadImagesInBatches(objectTypes, (category, index) => {
     const img=new Image();
     img.src=getRandomImage(category);
     img.className="object";
@@ -288,7 +309,7 @@ function generateStratSlide(){
   document.getElementById("slideIndicator").innerText =
     `Slide ${stratSlideIndex+1} of ${STRAT_EXERCISE.tephraCounts.length}`;
 
-  objectTypes.forEach((category,index)=>{
+loadImagesInBatches(objectTypes, (category, index) => {
     const img=new Image();
     img.src=getRandomImage(category);
     img.className="object";
@@ -367,4 +388,5 @@ const tableBody=document.getElementById("resultsTable");
     }
   });
 }
+
 
