@@ -129,15 +129,13 @@ viewport.addEventListener("mousemove",function(e){
   const dx = e.clientX - startX;
   const dy = e.clientY - startY;
 
-  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+  // movement threshold
+  if (Math.abs(newX - originX) > 5 || Math.abs(newY - originY) > 5) {
     hasMoved = true;
   }
 
-  originX += dx;
-  originY += dy;
-
-  startX = e.clientX;
-  startY = e.clientY;
+  originX = newX;
+  originY = newY;
 
   updateTransform();
 });
@@ -196,8 +194,6 @@ function generateSlide(type){
   }
 
   shuffleArray(objectTypes);
-  document.getElementById("slideIndicator").innerText =
-    `Total shards: ${objectTypes.length}`;
 
   objectTypes.forEach((category,index)=>{
     const img=new Image();
@@ -244,6 +240,8 @@ function generateSlide(type){
   });
 
   stats.totalTephra=objects.filter(o=>isTephra(o.trueType)).length;
+  document.getElementById("slideIndicator").innerText =
+  `True tephra shards: ${stats.totalTephra}`;
   updateScore();
 }
 
@@ -334,5 +332,44 @@ function nextStratSlide(){
   } else {
     showResults();
   }
+}
+
+function showResults(){
+  document.getElementById("resultsSection").style.display="block";
+
+  const tableBody=document.getElementById("resultsTableBody");
+  tableBody.innerHTML="";
+
+  stratStats.forEach((slide,index)=>{
+    const row=document.createElement("tr");
+
+    row.innerHTML=`
+      <td>${index+1}</td>
+      <td>${slide.trueCount}</td>
+      <td>${slide.correct}</td>
+      <td>${slide.falsePositive}</td>
+    `;
+
+    tableBody.appendChild(row);
+  });
+
+  const ctx=document.getElementById("resultsChart").getContext("2d");
+
+  new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:stratStats.map((_,i)=>`Slide ${i+1}`),
+      datasets:[
+        {
+          label:"True Tephra",
+          data:stratStats.map(s=>s.trueCount)
+        },
+        {
+          label:"Correct Identified",
+          data:stratStats.map(s=>s.correct)
+        }
+      ]
+    }
+  });
 }
 
